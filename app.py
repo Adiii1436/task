@@ -46,6 +46,7 @@ def process_uploaded_files(uploaded_files):
             continue
     return documents
 
+@st.cache_resource
 def create_vector_db(documents):
     embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
