@@ -16,6 +16,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import HumanMessage
 import tempfile
 
@@ -31,7 +32,7 @@ def process_uploaded_files(uploaded_files):
             if file_ext == '.txt' or file_ext == '.md':
                 loader = TextLoader(tmp_path)
             elif file_ext == '.pdf':
-                loader = UnstructuredPDFLoader(tmp_path)
+                loader = PyPDFLoader(tmp_path)
             elif file_ext == '.docx':
                 loader = UnstructuredWordDocumentLoader(tmp_path)
             else:
