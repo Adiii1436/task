@@ -20,6 +20,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import HumanMessage
 import tempfile
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+EMBEDDINGS_MODEL = "all-MiniLM-L6-v2"
+
 def process_uploaded_files(uploaded_files):
     documents = []
     for uploaded_file in uploaded_files:
@@ -29,7 +35,7 @@ def process_uploaded_files(uploaded_files):
                 tmp.write(uploaded_file.getvalue())
                 tmp_path = tmp.name
             
-            if file_ext == '.txt' or file_ext == '.md':
+            if file_ext in ('.txt', '.md'):
                 loader = TextLoader(tmp_path)
             elif file_ext == '.pdf':
                 loader = PyPDFLoader(tmp_path)
@@ -47,14 +53,21 @@ def process_uploaded_files(uploaded_files):
     return documents
 
 def create_vector_db(documents):
-    embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    # Use local embeddings
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    
+    embeddings = HuggingFaceEmbeddings(
+        model_name=EMBEDDINGS_MODEL,
+        model_kwargs={'device': 'cpu'}
+    )
+    
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
     
     if documents:
         docs = text_splitter.split_documents(documents)
         vectordb = Chroma.from_documents(
             documents=docs, 
-            embedding=embeddings, 
+            embedding=embeddings,
             persist_directory="chroma_db"
         )
         vectordb.persist()
@@ -90,12 +103,12 @@ uploaded_files = st.sidebar.file_uploader(
 )
 
 if uploaded_files and api_key:
-    documents = process_uploaded_files(uploaded_files)
-    if documents:
-        st.session_state.vectordb = create_vector_db(documents)
-        st.sidebar.success(f"Processed {len(documents)} documents and created new knowledge base!")
-    else:
-        st.sidebar.warning("No valid documents were processed")
+        with st.spinner("Processing files..."):
+            documents = process_uploaded_files(uploaded_files)
+            if documents:
+                st.session_state.vectordb = create_vector_db(documents)
+                st.success(f"Processed {len(documents)} documents!")
+    
 
 clear_button = st.sidebar.button("Clear Conversation", key="clear")
 
@@ -203,10 +216,6 @@ with container:
         st.warning("Please enter your API key.")
     elif submit_button and not uploaded_file and model_name == "Gemini Pro Vision":
         st.warning("Please upload an image to use the Image Model.")
-    elif submit_button and uploaded_file and model_name == "Gemini Pro Vision":
-        image_path = save_uploaded_image(uploaded_file)
-        if image_path:
-            output = generate_response(user_input, model, image_path, explain_kid)
     elif submit_button and user_input:
         output = generate_response(user_input, model, explain_to_kid=explain_kid)
 
