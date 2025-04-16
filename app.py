@@ -53,13 +53,8 @@ def process_uploaded_files(uploaded_files):
     return documents
 
 def create_vector_db(documents):
-    # Use local embeddings
-    from langchain_community.embeddings import HuggingFaceEmbeddings
     
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDINGS_MODEL,
-        model_kwargs={'device': 'cpu'}
-    )
+    embeddings = SentenceTransformerEmbeddings(model_name='local_models/all-MiniLM-L6-v2')
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
     
@@ -107,7 +102,6 @@ if uploaded_files and api_key:
             documents = process_uploaded_files(uploaded_files)
             if documents:
                 st.session_state.vectordb = create_vector_db(documents)
-                st.success(f"Processed {len(documents)} documents!")
     
 
 clear_button = st.sidebar.button("Clear Conversation", key="clear")
